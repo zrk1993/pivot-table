@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+    <body>
+        <div id="output" style="margin: 30px;"></div>
+    </body>
+	<script type="text/javascript" src="./pivot.js"></script>
+	<script>
+	
+(function () {
+
+const data = [
+  {
+    name: 'A',
+    agg: 3,
+    area: '北京',
+    color: 'red',
+  },
+  {
+    name: 'A',
+    agg: 1,
+    area: '北京',
+    color: 'red',
+  },
+    {
+    name: 'A',
+    agg: 1,
+    area: '北京',
+    color: 'red',
+  },
+  	{
+    name: 'A',
+    agg: 2,
+    area: '北京',
+    color: 'green',
+  },
+{
+    name: 'A',
+    agg: 2,
+    area: '北京',
+    color: 'abs',
+  },
+	{
+    name: 'A',
+    agg: 2,
+    area: '北京',
+    color: 'red',
+  },
+  {
+    name: 'B',
+    agg: 2,
+    area: '深圳',
+    color: 'green',
+  },
+  {
+    name: 'C',
+    agg: 2,
+    area: '厦门',
+    color: 'red',
+  },
+  {
+    name: 'D',
+    agg: 3,
+    area: '厦门',
+    color: 'green',
+  },
+  {
+    name: 'A',
+    agg: 3,
+    area: '广州',
+    color: 'red',
+  },
+  {
+    name: 'B',
+    agg: 4,
+    area: '北京',
+    color: 'white',
+  },
+];
+
+const opts = {
+  colAttrs: ['agg', 'color'],
+  rowAttrs: ['name', 'area'],
+};
+
+const pivotData = new PivotData(data, opts);
+
+console.log(pivotData);
+
+const table = pivotTableRender(pivotData);
+
+table.setAttribute('border', 1);
+table.setAttribute('cellspacing', 0);
+
+document.getElementById('output').appendChild(table);
+
+console.log(table);
+
+}());
+	</script>
+</html>
