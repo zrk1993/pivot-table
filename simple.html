@@ -1,10 +1,27 @@
 <!DOCTYPE html>
 <html>
-    <body>
-        <div id="output" style="margin: 30px;"></div>
-    </body>
-	<script type="text/javascript" src="./pivot.js"></script>
-	<script>
+<head>
+  <style type="text/css">
+    td, th{
+      padding: 0;
+      text-align: center;
+      min-width: 30px;
+    }
+    td div {
+      white-space:nowrap;
+    }
+    td div span {
+      display: inline-block;
+      width: 30px;
+    }
+  </style>
+</head>
+<body>
+    <div id="demo" style="margin: 30px;"></div>
+    <div id="output" style="margin: 30px;"></div>
+</body>
+<script type="text/javascript" src="./pivot.js"></script>
+<script>
 	
 (function () {
 
@@ -75,26 +92,106 @@ const data = [
     area: '北京',
     color: 'white',
   },
+  {
+    aa: 'B',
+    agg: 4,
+    area: '北京',
+    color: 'white',
+  },
 ];
 
+
 const opts = {
-  colAttrs: ['agg', 'color'],
-  rowAttrs: ['name', 'area'],
+  rowAttrs: ["area", "agg", "aa"],
+  colAttrs: ["name", "color"],
+  aggregator: function(argument) {
+    return {
+      data: [],
+      push: function (record) {
+        if (Array.isArray(record)) {
+          this.data = this.data.concat(record);
+        } else {
+          this.data.push(record);
+        }
+        return this;
+      },
+      format() {
+        return this.data.length;
+      },
+    };
+  }
 };
 
 const pivotData = new PivotData(data, opts);
 
 console.log(pivotData);
 
-const table = pivotTableRender(pivotData);
+const table = pivotTableRender(pivotData, { isShowCount: true, isShowAttr: true });
 
 table.setAttribute('border', 1);
 table.setAttribute('cellspacing', 0);
+table.setAttribute('cellpadding', 0);
+
+document.getElementById('demo').appendChild(table);
+
+console.log(table);
+
+}());
+
+(function () {
+
+const data2 =  [
+  {area: "上海", year: "2018", month: '1月', count: '100', 'c': '31'},
+  {area: "深圳", year: "2018", month: '2月', count: '200', 'c': '32'},
+  {area: "深圳", year: "2017", month: '3月', count: '300', 'c': '33'},
+  {area: "上海", year: "2017", month: '1月', count: '200', 'c': '34'},
+  {area: "上海", year: "2017", month: '2月', count: '100', 'c': '34'},
+  {area: "上海", year: "2018", month: '1月', count: '300', 'c': '38'},
+];
+
+const opts = {
+  rowAttrs: ["year", "month"],
+  colAttrs: ["area", ],
+  aggregator: function(argument) {
+    return {
+      data: [],
+      push: function (record) {
+        if (Array.isArray(record)) {
+          this.data = this.data.concat(record);
+        } else {
+          this.data.push(record);
+        }
+        return this;
+      },
+      format() {
+        const item = this.data[0] || {}
+        const count = item.count || 0;
+        const c = item.c || 0;
+        return `
+          <div>
+            <span style="border-right: 1px solid #000;">${count}</span>
+            <span>${c}</span>
+          </div>
+        `;
+      },
+    };
+  }
+};
+
+const pivotData = new PivotData(data2, opts);
+
+console.log(pivotData);
+
+const table = pivotTableRender(pivotData, { isShowCount: true, isShowAttr: true });
+
+table.setAttribute('border', 1);
+table.setAttribute('cellspacing', 0);
+table.setAttribute('cellpadding', 0);
 
 document.getElementById('output').appendChild(table);
 
 console.log(table);
 
 }());
-	</script>
+</script>
 </html>

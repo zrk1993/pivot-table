@@ -1,8 +1,9 @@
 class PivotData {
   constructor(data, opts) {
-    this.inputData = data;
-    this.colAttrs = opts.colAttrs;
-    this.rowAttrs = opts.rowAttrs;
+    this.inputData = data || [];
+    this.colAttrs = opts.colAttrs || [];
+    this.rowAttrs = opts.rowAttrs || [];
+    this.aggregator = opts.aggregator || aggregator;
 
     this.tree = {};
     this.colKeys = [];
@@ -10,7 +11,7 @@ class PivotData {
     this.colKeysMap = {};
     this.rowKeysMap = {};
 
-    this.defoliate = new Leaf();
+    this.defoliate = this.aggregator();
 
     this.init();
   }
@@ -34,11 +35,11 @@ class PivotData {
     const colKey = [];
 
     this.rowAttrs.forEach((rowAttr) => {
-      record[rowAttr] && rowKey.push(record[rowAttr]);
+      rowKey.push(record[rowAttr] || '');
     });
 
     this.colAttrs.forEach((colAttr) => {
-      record[colAttr] && colKey.push(record[colAttr]);
+      colKey.push(record[colAttr] || '');
     });
 
     const flatRowKey =  rowKey.join(' ');
@@ -48,20 +49,20 @@ class PivotData {
 
       if (!this.colKeysMap[flatColKey]) {
 
-        this.colKeysMap[flatColKey] = new Leaf();
+        this.colKeysMap[flatColKey] = this.aggregator();
         this.colKeys.push(colKey);
       }
-      this.colKeysMap[flatColKey].addRecord(record);
+      this.colKeysMap[flatColKey].push(record);
     }
 
     if (rowKey.length > 0) {
 
       if (!this.rowKeysMap[flatRowKey]) {
 
-        this.rowKeysMap[flatRowKey] = new Leaf();
+        this.rowKeysMap[flatRowKey] = this.aggregator();
         this.rowKeys.push(rowKey);
       }
-      this.rowKeysMap[flatRowKey].addRecord(record);
+      this.rowKeysMap[flatRowKey].push(record);
     }
 
     if  (colKey.length > 0 && rowKey.length > 0) {
@@ -72,20 +73,20 @@ class PivotData {
       }
 
       if (!this.tree[flatRowKey][flatColKey]) {
-        this.tree[flatRowKey][flatColKey] = new Leaf();
+        this.tree[flatRowKey][flatColKey] = this.aggregator();
       }
 
-      this.tree[flatRowKey][flatColKey].addRecord(record);
+      this.tree[flatRowKey][flatColKey].push(record);
     }
   }
 
-  getLeaf(rowKey, colKey) {
+  getAggregator(rowKey, colKey) {
   	const flatRowKey = rowKey.join(' ');
   	const flatColKey = colKey.join(' ');
 
     if (rowKey.length === 0 && colKey.length === 0) {
 
-      return this.defoliate;
+      return this.aggregator().push(this.inputData);
     } else if (rowKey.length === 0) {
 
       return this.colKeysMap[flatColKey];
@@ -96,9 +97,9 @@ class PivotData {
 
       const branch = this.tree[flatRowKey];
 
-      const leaf = branch ? branch[flatColKey] : null;
+      const Aggregator = branch ? branch[flatColKey] : null;
 
-      return leaf || this.defoliate;
+      return Aggregator || this.defoliate;
     }
   }
 
@@ -111,18 +112,21 @@ class PivotData {
   }
 }
 
-class Leaf {
-  constructor() {
-    this.records = [];
-  }
-
-  addRecord(record) {
-    this.records.push(record);
-  }
-
-  getCount() {
-  	return this.records.length;
-  }
+function aggregator() {
+	return {
+		data: [],
+		push: function (record) {
+	  	if (Array.isArray(record)) {
+  			this.data = this.data.concat(record);
+	  	} else {
+		    this.data.push(record);
+	  	}
+	  	return this;
+		},
+		format() {
+			return this.data.length;
+		},
+	};
 }
 
 
@@ -131,14 +135,18 @@ function compareArr(a, b, index) {
   let i = index || 0;
 
   if (i >= a.length || i >= b.length) {
+
     return 1;
   }
 
   if (a[i] > b[i]) {
+
     return 1;
   } else if (a[i] < b[i]) {
+
     return -1;
   } else {
+
     return compareArr(a, b, ++i);
   }
 }
@@ -174,8 +182,8 @@ function spanSize(arr, i, j) {
 
 function pivotTableRender(pivotData, opts) {
 	let renderOptions = {
-		isShowAttr: false,
-    isShowCount: true,
+		isShowAttr: true,
+    isShowCount: false,
 	};
 	renderOptions = Object.assign(renderOptions, opts);
 
@@ -188,14 +196,23 @@ function pivotTableRender(pivotData, opts) {
   const thead = document.createElement('thead');
 
   for (let iColAttrs = 0, lenColAttrs = colAttrs.length; iColAttrs < lenColAttrs; iColAttrs++) {
-    
+  
     const tr = document.createElement('tr');
 
-    if (iColAttrs === 0 && rowAttrs.length) {
-      const th = document.createElement('th');
-      th.setAttribute('colspan', rowAttrs.length);
-      th.setAttribute('rowspan', colAttrs.length);
-      tr.appendChild(th);
+    if (iColAttrs === 0) {
+
+    	if (rowAttrs.length > 0) {
+	      const th = document.createElement('th');
+	      th.setAttribute('colspan', rowAttrs.length);
+	      th.setAttribute('rowspan', colAttrs.length);
+	      tr.appendChild(th);
+    	}
+
+      if (rowAttrs.length === 0 && renderOptions.isShowCount && !renderOptions.isShowAttr) {
+	      const th = document.createElement('th');
+	      th.setAttribute('rowspan', colAttrs.length);
+	      tr.appendChild(th);
+	    }
     }
 
     if (renderOptions.isShowAttr) {
@@ -214,7 +231,7 @@ function pivotTableRender(pivotData, opts) {
         th.textContent = colKeys[i][iColAttrs];
         th.setAttribute('colspan', colSpan);
 
-        if (renderOptions.isShowAttr && rowAttrs.length > 0) {
+        if (renderOptions.isShowAttr && rowAttrs.length > 0 && iColAttrs === lenColAttrs - 1) {
         	th.setAttribute('rowspan', 2);
         }
 
@@ -222,7 +239,7 @@ function pivotTableRender(pivotData, opts) {
       }
     }
 
-    if (renderOptions.isShowCount && iColAttrs === 0) {
+    if (iColAttrs === 0 && renderOptions.isShowCount) {
 
       const th = document.createElement('th');
       th.textContent = '合计';
@@ -241,6 +258,14 @@ function pivotTableRender(pivotData, opts) {
 	  	th.textContent = rowAttrs[i];
 	  	tr.appendChild(th);
 	  }
+
+	  if (colAttrs.length === 0 && renderOptions.isShowCount) {
+
+	  	const th = document.createElement('th');
+	  	th.textContent = '合计';
+	  	tr.appendChild(th);
+	  }
+
 	  thead.appendChild(tr);
   }
 
@@ -262,7 +287,7 @@ function pivotTableRender(pivotData, opts) {
         th.textContent = rowKeys[iRowKeys][i];
         th.setAttribute('rowspan', rowSpan);
 
-        if (renderOptions.isShowAttr && i === len - 1) {
+        if (renderOptions.isShowAttr && colAttrs.length > 0 && i === len - 1) {
           th.setAttribute('colspan', 2);
         }
 
@@ -273,7 +298,7 @@ function pivotTableRender(pivotData, opts) {
   	for (let i = 0, len = colKeys.length; i < len; i++) {
   		
   		const td = document.createElement('td');
-  		td.textContent = pivotData.getLeaf(rowKeys[iRowKeys], colKeys[i]).getCount();
+  		td.innerHTML = pivotData.getAggregator(rowKeys[iRowKeys], colKeys[i]).format();
 
   		tr.appendChild(td);
   	}
@@ -281,7 +306,7 @@ function pivotTableRender(pivotData, opts) {
     if (renderOptions.isShowCount) {
 
       const td = document.createElement('td');
-      td.textContent = pivotData.getLeaf(rowKeys[iRowKeys], []).getCount();
+      td.innerHTML = pivotData.getAggregator(rowKeys[iRowKeys], []).format();
       tr.appendChild(td);
     }
 
@@ -302,12 +327,13 @@ function pivotTableRender(pivotData, opts) {
     for (let i =0, len = colKeys.length; i < len; i++) {
 
       const td = document.createElement('td');
-      td.textContent = pivotData.getLeaf([], colKeys[i]).getCount();
+      td.innerHTML = pivotData.getAggregator([], colKeys[i]).format();
 
       tr.appendChild(td);
     }
 
     const td = document.createElement('td');
+    td.innerHTML = pivotData.getAggregator([], []).format();
     tr.appendChild(td);
 
     pivotTable.appendChild(tr);
